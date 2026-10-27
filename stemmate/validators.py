@@ -205,3 +205,48 @@ def normalise_plan(data):
             for m in data.get("materials") or []
         ],
     }
+    
+    
+    
+
+
+
+# PHASE 4: strict rules, used when a plan is marked complete (FR-03) 
+
+def _is_blank(value):
+    return value is None or (isinstance(value, str) and not value.strip())
+
+
+def validate_complete(plan):
+    # `plan` has title, level, safety_notes, inclusion_prompt, steps and materials (the shape the API returns, or normalise_plan's result).
+    # Field names for steps use their position: steps[0].description.
+    problems = []
+
+    required = (
+        ("title", "Add a title."),
+        ("level", "Choose a level."),
+        ("safety_notes", "Add safety notes."),
+        ("inclusion_prompt", "Add at least one inclusion prompt."),
+    )
+    for name, message in required:
+        if _is_blank(plan.get(name)):
+            problems.append(_problem(name, message))
+
+    steps = plan.get("steps") or []
+    if not steps:
+        problems.append(_problem("steps", "Add at least one step."))
+    for i, step in enumerate(steps):
+        if _is_blank(step.get("description")):
+            problems.append(_problem(f"steps[{i}].description", "Describe this step."))
+        if step.get("duration") is None:
+            problems.append(_problem(f"steps[{i}].duration", "Add how many minutes this step takes."))
+
+    if not (plan.get("materials") or []):
+        problems.append(_problem("materials", "Add at least one material."))
+
+    return problems
+
+
+def estimate_duration(steps):
+    # Total minutes: the sum of the step durations.
+    return sum(step["duration"] for step in steps)
