@@ -1,11 +1,11 @@
 # PLAN ENDPOINTS: Routes only translate HTTP; the rules live in plan_service
 
-from flask import Blueprint, g, jsonify
+from flask import Blueprint, current_app, g, jsonify, request
 
 from ..db import get_db
 from ..decorators import login_required
 from ..request_utils import json_body
-from ..services import plan_service
+from ..services import plan_service, storage_service
 
 bp = Blueprint("plans", __name__, url_prefix="/api")
 
@@ -14,7 +14,20 @@ bp = Blueprint("plans", __name__, url_prefix="/api")
 @login_required
 def save_plan(plan_id):
     data = json_body()
+    storage_service.ensure_room( # 507 before anything is written
+        current_app.config["DATABASE"],
+        current_app.config["STORAGE_LIMIT_BYTES"],
+        len(request.get_data()),
+    )
     result = plan_service.save_plan(get_db(), g.user["user_id"], plan_id, data)
+    return jsonify(result)
+
+
+@bp.post("/plans/<plan_id>/complete")
+@login_required
+def complete_plan(plan_id):
+    data = json_body()
+    result = plan_service.complete_plan(get_db(), g.user["user_id"], plan_id, data)
     return jsonify(result)
 
 
