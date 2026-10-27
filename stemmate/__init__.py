@@ -1,7 +1,6 @@
 # STEMMATE BACKEND: The App Factory
 #create_app() builds and configs the Flask App on demand
 
-# STEMMate backend. `create_app()` builds and configures the Flask app.
 
 import os
 
@@ -9,7 +8,7 @@ from flask import Flask
 
 from . import cli, db, errors
 from .config import Config
-from .routes import auth, health, materials, plans
+from .routes import auth, health, materials, plans, storage
 
 
 def create_app(test_config=None):
@@ -32,5 +31,6 @@ def create_app(test_config=None):
     app.register_blueprint(auth.bp)
     app.register_blueprint(plans.bp)
     app.register_blueprint(materials.bp)
+    app.register_blueprint(storage.bp)
 
     return app
