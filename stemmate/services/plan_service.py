@@ -1,5 +1,6 @@
 # RULES for saving and reading PLANS (FR-03, QR-02, PR-01, SR-01)
 
+
 import sqlite3
 
 from .. import validators
@@ -18,6 +19,11 @@ def _version_conflict(current_version):
     return ApiError(409, "VERSION_CONFLICT",
                     "This plan was changed somewhere else. Reload it to see the latest version.",
                     extra={"current_version": current_version})
+
+
+def _plan_syncing():
+    return ApiError(409, "PLAN_SYNCING",
+                    "This plan is syncing right now. Please wait a moment, then try again.")
 
 
 def _owned_row(db, owner_id, plan_id):
@@ -57,6 +63,16 @@ def _check_materials_exist(db, materials):
         raise ApiError(422, "VALIDATION_FAILED", "Please fix the highlighted fields.", fields=problems)
 
 
+def _status_after_edit(existing, plan):
+    # What a saved edit does to the plan's status (FR-03, FR-05):
+    # a complete plan that is STILL valid goes back to 'pending' (it must sync again); one that is no longer valid becomes a draft ('local').
+    still_valid = existing["is_complete"] and not validators.validate_complete(plan)
+    if still_valid:
+        return {"estimated_duration": validators.estimate_duration(plan["steps"]),
+                "is_complete": 1, "sync_status": "pending"}
+    return {"estimated_duration": None, "is_complete": 0, "sync_status": "local"}
+
+
 
 
 
@@ -83,10 +99,14 @@ def list_materials(db):
     return [dict(row) for row in plan_repository.list_materials(db)]
 
 
-# SAVINGS AREA (autosave calls this about 1 s after the last edit) 
+
+
+
+
+# SAVING (autosave calls this about 1 s after the last edit) 
 
 def save_plan(db, owner_id, plan_id, data):
-    # 1 Shape checks: nothing touches the database until the input is clean.
+    # 1 Shape checks: nothing touches the database until the input is clean
     extra = validators.unknown_field_paths(data)
     if extra:
         raise ApiError(422, "UNKNOWN_FIELD", "This request contains a field we do not accept.",
@@ -98,7 +118,6 @@ def save_plan(db, owner_id, plan_id, data):
     plan = validators.normalise_plan(data)
     _check_materials_exist(db, plan["materials"])
 
-
     # 2 Does it exist, and is it ours?
     existing = plan_repository.get_row(db, plan_id)
     if existing is not None and existing["owner_id"] != owner_id:
@@ -107,8 +126,7 @@ def save_plan(db, owner_id, plan_id, data):
     now = utc_now_iso()
     sent_version = data["version"]
 
-
-    # 3 One transaction: if anything fails, NOTHING saved
+    # 3 One transaction: if anything fails, NOTHING is saved
     with db:
         if existing is None:
             if sent_version != 0:
@@ -117,16 +135,14 @@ def save_plan(db, owner_id, plan_id, data):
                 plan_repository.insert_plan(db, plan_id, owner_id, plan, now)
             except sqlite3.IntegrityError:
                 raise _version_conflict(plan_repository.get_row(db, plan_id)["version"]) from None
-            status = {"estimated_duration": None, "is_complete": 0, "sync_status": "local"}
         else:
+            if existing["sync_status"] == "syncing":
+                raise _plan_syncing() # read-only while being sent (P1, section 4.3)
             if sent_version != existing["version"]:
                 raise _version_conflict(existing["version"])
-            # Phase 3: an edit keeps the plan's current status (Phase 4 changes this)
-            status = {"estimated_duration": existing["estimated_duration"],
-                      "is_complete": existing["is_complete"],
-                      "sync_status": existing["sync_status"]}
+            status = _status_after_edit(existing, plan)
             changed = plan_repository.update_plan(db, plan_id, owner_id, sent_version, plan, status, now)
-            if changed == 0:             # someone saved between our check and our update
+            if changed == 0: # someone saved between our check and our update
                 raise _version_conflict(plan_repository.get_row(db, plan_id)["version"])
         plan_repository.replace_steps(db, plan_id, plan["steps"])
         plan_repository.replace_materials(db, plan_id, plan["materials"])
@@ -139,3 +155,41 @@ def save_plan(db, owner_id, plan_id, data):
         "sync_status": saved["sync_status"],
         "last_modified": saved["last_modified"],
     }
+
+
+
+
+
+
+# COMPLETING (strict rules, FR-03) 
+
+def complete_plan(db, owner_id, plan_id, data):
+    extra = validators.unknown_fields(data, ("version",))
+    if extra:
+        raise ApiError(422, "UNKNOWN_FIELD", "This request contains a field we do not accept.",
+                       fields=[{"field": f, "message": "This field is not allowed."} for f in extra])
+    sent_version = data.get("version")
+    if not validators.is_whole_number(sent_version) or sent_version < 0:
+        raise ApiError(422, "VALIDATION_FAILED", "Please fix the highlighted fields.",
+                       fields=[{"field": "version", "message": "The plan version is missing. Reload the page."}])
+
+    row = _owned_row(db, owner_id, plan_id)
+    if row["sync_status"] == "syncing":
+        raise _plan_syncing()
+    if sent_version != row["version"]:
+        raise _version_conflict(row["version"])
+
+    plan = _plan_to_dict(db, row)
+    problems = validators.validate_complete(plan)
+    if problems:
+        raise ApiError(422, "VALIDATION_FAILED", "Please fix the highlighted fields.", fields=problems)
+
+    with db:
+        changed = plan_repository.mark_complete(
+            db, plan_id, owner_id, sent_version,
+            validators.estimate_duration(plan["steps"]), utc_now_iso())
+        if changed == 0:
+            raise _version_conflict(plan_repository.get_row(db, plan_id)["version"])
+
+    return {"plan_id": plan_id, "version": sent_version + 1,
+            "is_complete": True, "sync_status": "pending"}

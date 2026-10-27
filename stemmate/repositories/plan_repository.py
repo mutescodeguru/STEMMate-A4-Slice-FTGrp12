@@ -87,3 +87,19 @@ def existing_material_ids(db, ids):
 def list_materials(db):
     return db.execute(
         "SELECT material_id, name, safety_notes FROM material ORDER BY name").fetchall()
+    
+    
+    
+
+# PHASE 4
+
+def mark_complete(db, plan_id, owner_id, expected_version, estimated_duration, now):
+    # Complete the plan if the stored version is still `expected_version`
+    # Returns the number of rows changed (0 = someone else saved first)
+    cur = db.execute(
+        "UPDATE session_plan SET estimated_duration = ?, is_complete = 1,"
+        " sync_status = 'pending', version = version + 1, last_modified = ?"
+        " WHERE plan_id = ? AND owner_id = ? AND version = ?",
+        (estimated_duration, now, plan_id, owner_id, expected_version),
+    )
+    return cur.rowcount
