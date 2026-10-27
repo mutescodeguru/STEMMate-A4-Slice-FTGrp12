@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "title": "Build a simple circuit",
+  "level": "junior secondary",
+  "safety_notes": "Use batteries only, no mains.",
+  "inclusion_prompt": "Pair learners so each can hold or read.",
+  "steps": [
+    { "step_number": 1, "description": "Show the parts", "duration": 10 },
+    { "step_number": 2, "description": "Build the circuit", "duration": 25 }
+  ],
+  "materials": [
+    { "material_id": 1, "quantity_required": 2 },
+    { "material_id": 3, "quantity_required": 1 }
+  ]
+}
