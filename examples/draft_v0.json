@@ -1,0 +1,8 @@
+{
+  "version": 0,
+  "title": "Build a simple circuit",
+  "level": "junior secondary",
+  "steps": [
+    { "step_number": 1, "description": "Show the parts", "duration": 10 }
+  ]
+}
