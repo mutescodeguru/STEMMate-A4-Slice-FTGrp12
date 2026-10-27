@@ -28,3 +28,20 @@ Initial repository setup. Requirements, architecture, implementation and testing
 ## Data and privacy
 
 Use synthetic demonstration data only. Do not commit secrets, real learner data, or local database files.
+
+
+Run the backend
+1. python -m venv .venv then .venv\Scripts\activate.bat (Windows)
+2. pip install -r requirements.txt
+3. flask --app stemmate init-db
+4. flask --app stemmate create-user <name> (you will be asked for a password)
+5. python run.py then open http://127.0.0.1:5000/health
+6. Tests: pytest
+Environment variables (all optional in development)
+Variable	Purpose
+STEMMATE_SECRET_KEY	Signs session cookies. Set a long random value outside development.
+STEMMATE_DATABASE	Path to the SQLite file (default instance/stemmate.db).
+STEMMATE_SYNC_KEY	Shared key for the central store (Phase 5).
+STEMMATE_STORAGE_LIMIT_BYTES	Storage limit for QR-01 tests (default 50 MB).
+
+Never commit .env, *.db or real passwords. All data is synthetic (PR-01).

@@ -6,3 +6,4 @@ instance/*.db
 .env
 .vscode/
 desktop.ini
+cookies.txt
