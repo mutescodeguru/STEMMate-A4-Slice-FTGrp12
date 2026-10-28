@@ -21,3 +21,8 @@ class Config:
     STORAGE_LIMIT_BYTES = int(
         os.environ.get("STEMMATE_STORAGE_LIMIT_BYTES", 50 * 1024 * 1024)
     )
+    
+    # SYNCRONISATION
+    CENTRAL_URL = os.environ.get("STEMMATE_CENTRAL_URL", "http://127.0.0.1:5001")
+    SYNC_INTERVAL_SECONDS = int(os.environ.get("STEMMATE_SYNC_INTERVAL", 60))   # P1: every 60 s
+    SYNC_BACKOFF_BASE_SECONDS = int(os.environ.get("STEMMATE_SYNC_BACKOFF", 5))  # 5, 10, 20... up to 300
