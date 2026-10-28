@@ -7,7 +7,7 @@ from flask import Flask
 
 from . import cli, db, errors
 from .config import Config
-from .routes import auth, health, materials, plans, storage, sync
+from .routes import auth, health, materials, pages, plans, storage, sync
 
 
 def create_app(test_config=None):
@@ -32,5 +32,6 @@ def create_app(test_config=None):
     app.register_blueprint(materials.bp)
     app.register_blueprint(storage.bp)
     app.register_blueprint(sync.bp)
+    app.register_blueprint(pages.bp)
 
     return app
