@@ -1,10 +1,13 @@
-# SHARED FIXTURES: every test gets its own temp db
+# SHARED FIXTURES: Every test gets its own empty temporary database.
 
 import pytest
 
+from central.app import create_central_app
 from stemmate import create_app, seed_data
 from stemmate.db import get_db, init_db
 from stemmate.services import auth_service
+
+from .central_adapter import CentralTestClient
 
 USERNAME = "facilitator1"
 PASSWORD = "correct-horse-1"
@@ -24,6 +27,7 @@ def app(tmp_path):
         "TESTING": True,
         "DATABASE": str(tmp_path / "test.db"),
         "SECRET_KEY": "test-secret",
+        "SYNC_INLINE": True,                 # POST /api/sync/run works synchronously in tests
     })
     with app.app_context():
         init_db()
@@ -54,3 +58,21 @@ def logged_in_client(client):
 def other_client(app):
     # A second facilitator, logged in, with their own cookie.
     return _log_in(app.test_client(), OTHER_USERNAME)
+
+
+@pytest.fixture
+def central_app(tmp_path):
+    return create_central_app({
+        "TESTING": True,
+        "DATABASE": str(tmp_path / "central.db"),
+        "SYNC_KEY": "test-sync-key",
+        "FAIL_AFTER_UNIT": None,
+    })
+
+
+@pytest.fixture
+def central(app, central_app):
+    # The local app's connection to the central store (in-process).
+    client = CentralTestClient(central_app)
+    app.config["CENTRAL_CLIENT"] = client
+    return client
