@@ -30,11 +30,10 @@ def reset_stuck(db):
         "UPDATE session_plan SET sync_status = 'interrupted' WHERE sync_status = 'syncing'").rowcount
 
 
-def start_record(db, plan_id, now):
+def start_record(db, plan_id, plan_version, now):
     return db.execute(
-        "INSERT INTO sync_record (plan_id, attempted_at, outcome, last_step_sent)"
-        " VALUES (?, ?, 'started', -1)", (plan_id, now)).lastrowid
-
+        "INSERT INTO sync_record (plan_id, plan_version, attempted_at, outcome, last_step_sent)"
+        " VALUES (?, ?, ?, 'started', -1)", (plan_id, plan_version, now)).lastrowid
 
 def update_record(db, sync_id, last_step_sent, outcome):
     db.execute("UPDATE sync_record SET last_step_sent = ?, outcome = ? WHERE sync_id = ?",

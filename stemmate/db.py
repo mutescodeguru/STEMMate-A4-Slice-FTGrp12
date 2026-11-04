@@ -26,6 +26,11 @@ def init_db():
     conn = get_db()
     with current_app.open_resource("schema.sql") as f:
         conn.executescript(f.read().decode("utf-8"))
+    # does not add a column, so add it once. Old rows get 0 ("not recorded").
+    columns = [row["name"] for row in conn.execute("PRAGMA table_info(sync_record)")]
+    if "plan_version" not in columns:
+        conn.execute("ALTER TABLE sync_record ADD COLUMN plan_version INTEGER NOT NULL DEFAULT 0")
+        conn.commit()
         
         
 def init_app(app):

@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS plan_material (
 CREATE TABLE IF NOT EXISTS sync_record (
     sync_id INTEGER PRIMARY KEY AUTOINCREMENT,
     plan_id TEXT NOT NULL REFERENCES session_plan (plan_id) ON DELETE CASCADE,
+    plan_version   INTEGER NOT NULL DEFAULT 0, -- the plan version this attempt sent
     attempted_at TEXT NOT NULL,
     outcome TEXT,
     last_step_sent INTEGER NOT NULL DEFAULT -1

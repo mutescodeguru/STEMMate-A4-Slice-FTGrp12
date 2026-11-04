@@ -38,7 +38,8 @@ def sync_plan(db, client, plan_id):
     with db:
         if sync_repository.claim(db, plan_id) == 0:
             return "skipped"                      # not pending/interrupted, or already claimed
-        sync_id = sync_repository.start_record(db, plan_id, utc_now_iso())
+        version_sent = plan_repository.get_row(db, plan_id)["version"]   # fixed while syncing
+        sync_id = sync_repository.start_record(db, plan_id, version_sent, utc_now_iso())
 
     last_sent = -1
     try:
