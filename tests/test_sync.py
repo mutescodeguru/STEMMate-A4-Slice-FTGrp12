@@ -197,3 +197,44 @@ def test_sync_run_route_syncs_and_status_route_reports(app, logged_in_client, ce
 def test_status_counts_only_your_own_plans(app, logged_in_client, other_client):
     completed_plan(logged_in_client)
     assert other_client.get("/api/sync/status").get_json()["pending"] == 0
+    
+    
+    
+    
+# plan_version & sync attempt (P2's model) 
+
+def attempts(app):
+    with app.app_context():
+        rows = get_db().execute(
+            "SELECT plan_version, outcome, last_step_sent FROM sync_record ORDER BY sync_id").fetchall()
+    return [(r["plan_version"], r["outcome"], r["last_step_sent"]) for r in rows]
+
+
+def test_each_attempt_records_the_plan_version_it_sent(app, logged_in_client, central, central_app):
+    plan_id, version = completed_plan(logged_in_client)
+    central_app.config["FAIL_AFTER_UNIT"] = 1
+    run(app, central) # this version is interrupted at unit 1
+    central_app.config["FAIL_AFTER_UNIT"] = None
+    new = save(logged_in_client, plan_id, full_plan(version=version, title="Edited")).get_json()
+    done = logged_in_client.post(f"/api/plans/{plan_id}/complete",
+                                 json={"version": new["version"]}).get_json()
+    run(app, central) # the newer version completes
+    assert attempts(app) == [(version, "interrupted", 1), (done["version"], "success", 2)]
+
+
+def test_init_db_adds_plan_version_to_an_older_database(tmp_path):
+    from stemmate import create_app
+    from stemmate.db import init_db
+    old = tmp_path / "old.db"
+    con = sqlite3.connect(old)
+    con.executescript("""CREATE TABLE sync_record (sync_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        plan_id TEXT NOT NULL, attempted_at TEXT NOT NULL, outcome TEXT,
+        last_step_sent INTEGER NOT NULL DEFAULT -1);
+        INSERT INTO sync_record (plan_id, attempted_at, outcome) VALUES ('p', 't', 'success');""")
+    con.close()
+    app = create_app({"TESTING": True, "DATABASE": str(old), "SECRET_KEY": "x"})
+    with app.app_context():
+        init_db()
+        init_db() # safe to repeat
+        row = get_db().execute("SELECT plan_version FROM sync_record").fetchone()
+    assert row["plan_version"] == 0 # old rows get 0
