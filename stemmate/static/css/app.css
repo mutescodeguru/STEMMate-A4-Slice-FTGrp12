@@ -27,7 +27,12 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 
-html { font-size: 100%; }
+html {
+  font-size: 100%;
+  /* Keep the focused field clear of the sticky editor footer and bottom nav (WCAG 2.2, 2.4.11 Focus Not Obscured) */
+  scroll-padding-bottom: 180px;
+  scroll-padding-top: 16px;
+}
 
 body {
   margin: 0;
@@ -218,9 +223,12 @@ textarea { resize: vertical; }
 .editor-footer {
   position: sticky; bottom: 72px; background: var(--surface);
   border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 12px var(--gap); margin-top: var(--gap);
-  display: grid; gap: 8px;
+  padding: 8px 12px; margin-top: var(--gap);
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px;
 }
+.editor-footer .save-status { grid-column: 1; justify-content: flex-start; font-size: 0.9375rem; }
+.editor-footer .sync-badge { grid-column: 1; text-align: left; }
+.editor-footer #mark-complete { grid-column: 2; grid-row: 1 / span 2; width: auto; white-space: nowrap; }
 .save-status { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; font-weight: 600; }
 .save-status--saved { color: var(--ok); }
 .save-status--saving { color: var(--primary); }
@@ -273,3 +281,4 @@ dialog h2 { font-size: 1.375rem; margin-bottom: 8px; }
 
 .spin { animation: spin 1.2s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
