@@ -97,7 +97,7 @@ export async function openPlan(plan, { isNew = false, restoredAt = null } = {}) 
 
   if (isNew) setSaveStatus('idle', 'Not saved yet. Saving starts when you type.');
   else if (restoredAt) setSaveStatus('saved', `Draft restored. Last saved ${formatTime(restoredAt)}`);
-  else setSaveStatus('saved', `Saved on this device · ${formatTime(plan.last_modified)}`);
+  else setSaveStatus('saved', `Last saved ${formatTime(plan.last_modified)}`);
   renderSyncState();
 }
 
@@ -282,7 +282,7 @@ async function saveNow() {
     state.syncStatus = res.sync_status;
     state.retryIndex = 0;
     clearFieldErrorsQuiet();
-    if (!state.dirty) setSaveStatus('saved', `Saved on this device · ${formatTime(res.last_modified)}`);
+    if (!state.dirty) setSaveStatus('saved', `Last saved ${formatTime(res.last_modified)}`);  // status chip already says where it is saved
     renderSyncState();
     hooks.onChanged();
   } catch (err) {
@@ -382,7 +382,7 @@ async function markComplete() {
     state.syncStatus = res.sync_status;
     clearErrors();
     renderSyncState();
-    setSaveStatus('saved', 'Plan complete. Saved on this device and waiting to sync.');
+    setSaveStatus('saved', 'Plan complete.');
     hooks.onChanged();
   } catch (err) {
     if (err.status === 422) showFieldErrors(err.fields, { summary: true });

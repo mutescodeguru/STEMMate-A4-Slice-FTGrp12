@@ -39,7 +39,8 @@ async function route() {
     const err = $('#login-error');
     err.hidden = !loginNotice;
     err.textContent = loginNotice;
-    $('#login-username').focus();
+    // No autofocus: the first Tab now reaches the skip link, then Username (consistent with other pages).
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
     return;
   }
   if (currentPlanId() && hasUnsaved()) await flush();
